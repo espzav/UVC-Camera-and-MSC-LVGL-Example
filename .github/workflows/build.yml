@@ -1,0 +1,35 @@
+name: Build demo
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        idf_ver: ["release-v5.0"]
+        idf_target: ["esp32s3"]
+    runs-on: ubuntu-20.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+      - name: Build demo
+        env:
+          IDF_TARGET: ${{ matrix.idf_target }}
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          idf.py set-target ${{matrix.idf_target}} build
+          cd build
+          esptool.py --chip ${{matrix.idf_target}} merge_bin -o "camera_example_${{matrix.idf_target}}.bin" @flash_args
+      - name: Update release
+        uses: pyTooling/Actions/releaser@r0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: |
+            build/camera_example_${{ matrix.idf_target }}.bin
+          tag: camera_example_latest

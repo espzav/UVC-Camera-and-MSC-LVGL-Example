@@ -1,0 +1,1 @@
+This is an example of using USB devices (UVC camera and MSC Drive). This example shows video from camera on the first tab or list of files on the second tab. Each file can be opened in new window (supported only *.txt, *.jpg and *.wav files).
