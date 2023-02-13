@@ -33,3 +33,31 @@ jobs:
           files: |
             build/camera_example_${{ matrix.idf_target }}.bin
           tag: camera_example_latest
+
+      - name: Download builds
+        uses: actions/download-artifact@v3
+        with:
+          name: build-images
+          path: images/
+          files: |
+            build/camera_example_${{ matrix.idf_target }}.bin
+      - name: Setup Pages
+        uses: actions/configure-pages@v2
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: images/
+          files: |
+            build/camera_example_${{ matrix.idf_target }}.bin
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v1
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-images
+          path: images/
+          files: |
+            build/camera_example_${{ matrix.idf_target }}.bin
+      - name: Setup Pages
+        uses: actions/configure-pages@v2
