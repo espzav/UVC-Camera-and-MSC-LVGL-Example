@@ -11,11 +11,11 @@ On second tab, there is list of files and directories, when USB drive connected.
 
 |  Camera tab  | USB drive tab | Settings tab |
 | :----------: | :-----------: | :----------: |
-| ![Camera tab](/assets/images/camera_tab.jpg) | ![USB drive tab](/assets/images/files_tab.jpg) | ![USB drive tab](/assets/images/settings_tab.jpg) |
+| ![Camera tab](/doc/images/camera_tab.jpg) | ![USB drive tab](/doc/images/files_tab.jpg) | ![USB drive tab](/doc/images/settings_tab.jpg) |
 
 |  Image window  |   Media player window | Text file window |
 | :------------: | :-------------------: | :--------------: |
-| ![Camera tab](/assets/images/image_window.jpg) | ![USB drive tab](/assets/images/media_player.jpg) | ![USB drive tab](/assets/images/text_file.jpg) |
+| ![Camera tab](/doc/images/image_window.jpg) | ![USB drive tab](/doc/images/media_player.jpg) | ![USB drive tab](/doc/images/text_file.jpg) |
 
 ## How to use the example
 
@@ -25,7 +25,6 @@ On second tab, there is list of files and directories, when USB drive connected.
 * USB (UVC) Camera
 * USB Drive
 * USB cable with bare wires on one side
-* External USB/UART converter for flash and console
 
 ### Camera connection
 
@@ -55,3 +54,12 @@ idf.py -p COMX flash monitor
 Note 1: Before flashing firmware, there should be manually switched into BOOT mode: Hold BOOT button on ESP-BOX and push restart button. 
 
 Note 2: There cannot be used USB-C simultaneously with camera. The ESP-BOX must be powered from pins on the bottom side!
+
+### Recommended USB connection with custom board
+
+![Camera tab](doc/images/custom_pcb.jpg) ![USB drive tab](doc/images/custom_pcb_1.jpg)
+
+This is a custom board which was made for connecting USB devices to ESP-BOX. All source files are saved in [this folder](doc/hardware/).
+
+<img src="doc/hardware/schematic.png">
+
