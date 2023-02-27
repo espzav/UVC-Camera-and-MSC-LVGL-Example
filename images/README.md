@@ -1,1 +1,0 @@
-This is a folder for generated images of compiled example.

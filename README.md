@@ -63,3 +63,8 @@ This is a custom board which was made for connecting USB devices to ESP-BOX. All
 
 <img src="doc/hardware/schematic.png">
 
+# Flash latest binary from browser
+
+<a href="https://espressif.github.io/esp-launchpad/?flashConfigURL=https://espzav.github.io/UVC-Camera-and-MSC-LVGL-Example/launchpad.toml">
+    <img alt="Try it with ESP Launchpad" src="https://espressif.github.io/esp-launchpad/assets/try_with_launchpad.png" width="250" height="70">
+</a>
