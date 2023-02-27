@@ -1,7 +1,7 @@
 esp_toml_version = 1.0
 firmware_images_url = "https://espzav.github.io/UVC-Camera-and-MSC-LVGL-Example/"
 
-supported_apps = ["UVC_CAMERA_EXAMPLE_IDF:v5", "UVC_CAMERA_EXAMPLE_IDF:latest"]
+supported_apps = ["UVC_CAMERA_EXAMPLE_IDF:latest", "UVC_CAMERA_EXAMPLE_IDF:v5"]
 
 [UVC_CAMERA_EXAMPLE_IDF:v5]
 chipsets = ["ESP32-S3"]

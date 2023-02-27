@@ -659,6 +659,10 @@ static void close_window_wav_handler(lv_event_t * e)
         bsp_audio_poweramp_enable(false);
         es8311_delete(es8311_dev);
         es8311_dev = NULL;
+        if (i2s_tx_chan) {
+            i2s_channel_disable(i2s_tx_chan);
+            i2s_del_channel(i2s_tx_chan);
+        }
     }
 }
 
