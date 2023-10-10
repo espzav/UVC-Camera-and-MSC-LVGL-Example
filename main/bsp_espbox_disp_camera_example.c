@@ -3,6 +3,9 @@
  *
  * SPDX-License-Identifier: CC0-1.0
  */
+ 
+#define ENABLE_AUDIO   1
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,10 +25,12 @@
 #include "msc_host.h"
 #include "msc_host_vfs.h"
 #include "esp_vfs_fat.h"
+#if ENABLE_AUDIO
 #include "es8311.h"
+#endif
 
 #include "jpegd2.h"
-#include "bsp/esp-box.h"
+#include "bsp/esp-bsp.h"
 #include "lvgl.h"
 #include "freertos/event_groups.h"
 
@@ -152,7 +157,9 @@ static char usb_drive_current_path[250];
 /* Audio */
 static SemaphoreHandle_t audio_mux;
 static i2s_chan_handle_t i2s_tx_chan;
+#if ENABLE_AUDIO
 static es8311_handle_t es8311_dev = NULL;
+#endif
 static bool play_file_repeat = false;
 static bool play_file_stop = false;
 static char usb_drive_play_file[250];
@@ -639,9 +646,11 @@ static void volume_event_cb(lv_event_t * e)
     assert(slider != NULL);
 
     int32_t volume = lv_slider_get_value(slider);
+    #if ENABLE_AUDIO
     if (es8311_dev) {
         es8311_voice_volume_set(es8311_dev, volume, NULL);
     }
+    #endif
 }
 
 static void close_window_wav_handler(lv_event_t * e)
@@ -655,7 +664,7 @@ static void close_window_wav_handler(lv_event_t * e)
         
         xSemaphoreTake(audio_mux, portMAX_DELAY);
         vSemaphoreDelete(audio_mux);
-
+#if ENABLE_AUDIO
         bsp_audio_poweramp_enable(false);
         es8311_delete(es8311_dev);
         es8311_dev = NULL;
@@ -663,6 +672,7 @@ static void close_window_wav_handler(lv_event_t * e)
             i2s_channel_disable(i2s_tx_chan);
             i2s_del_channel(i2s_tx_chan);
         }
+#endif
     }
 }
 
@@ -676,7 +686,7 @@ static void show_window_wav(const char * path)
     strcpy(usb_drive_play_file, path);
 
     play_file_repeat = false;
-    
+ #if ENABLE_AUDIO   
     const es8311_clock_config_t clk_cfg = BSP_ES8311_SCLK_CONFIG(SAMPLE_RATE);
 
     /* Create and configure ES8311 I2C driver */
@@ -744,7 +754,7 @@ static void show_window_wav(const char * path)
     lv_slider_set_value(slider, DEFAULT_VOLUME, false);
     lv_obj_center(slider);
     lv_obj_add_event_cb(slider, volume_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
-
+#endif
 }
 
 static app_file_type_t get_file_type(char * filepath)
