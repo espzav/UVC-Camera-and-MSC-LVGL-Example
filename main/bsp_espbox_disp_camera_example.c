@@ -4,9 +4,6 @@
  * SPDX-License-Identifier: CC0-1.0
  */
  
-#define ENABLE_AUDIO   1
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -25,9 +22,6 @@
 #include "msc_host.h"
 #include "msc_host_vfs.h"
 #include "esp_vfs_fat.h"
-#if ENABLE_AUDIO
-#include "es8311.h"
-#endif
 
 #include "jpegd2.h"
 #include "bsp/esp-bsp.h"
@@ -35,6 +29,10 @@
 #include "freertos/event_groups.h"
 
 #define TAG "ESP-BOX"
+
+
+#define ENABLE_AUDIO        1
+#define ENABLE_CAMERA_ZOOM  0
 
 /* Default screen brightness */
 #define DEFAULT_BRIGHTNESS  (50)
@@ -156,9 +154,8 @@ static char usb_drive_current_path[250];
 
 /* Audio */
 static SemaphoreHandle_t audio_mux;
-static i2s_chan_handle_t i2s_tx_chan;
 #if ENABLE_AUDIO
-static es8311_handle_t es8311_dev = NULL;
+static esp_codec_dev_handle_t spk_codec_dev = NULL;
 #endif
 static bool play_file_repeat = false;
 static bool play_file_stop = false;
@@ -547,7 +544,8 @@ static void play_file(void * arg)
         ESP_LOGE(TAG, "Not enough memory for playing!");
         goto END;
     }
-
+    
+    /* Open file */
     file = fopen(path, "rb");
     if (file == NULL) {
         ESP_LOGE(TAG, "%s file does not exist!", path);
@@ -565,6 +563,13 @@ static void play_file(void * arg)
     ESP_LOGI(TAG, "Sample rate: %d", (int)wav_header.sample_rate);
     ESP_LOGI(TAG, "Data size: %d", (int)wav_header.data_size);
 
+        esp_codec_dev_sample_info_t fs = {
+        .sample_rate = wav_header.sample_rate,
+        .channel = wav_header.num_channels,
+        .bits_per_sample = wav_header.bits_per_sample,
+    };
+    esp_codec_dev_open(spk_codec_dev, &fs);
+
     uint32_t bytes_send_to_i2s = 0;
     do {
         bytes_send_to_i2s = 0;
@@ -579,18 +584,18 @@ static void play_file(void * arg)
             size_t bytes_read_from_spiffs = fread(wav_bytes, 1, BUFFER_SIZE, file);
 
             /* Send it to I2S */
-            size_t i2s_bytes_written;
-            assert(i2s_tx_chan);
-            ESP_ERROR_CHECK(i2s_channel_write(i2s_tx_chan, wav_bytes, bytes_read_from_spiffs, &i2s_bytes_written, pdMS_TO_TICKS(500)));
-            bytes_send_to_i2s += i2s_bytes_written;
+            esp_codec_dev_write(spk_codec_dev, wav_bytes, bytes_read_from_spiffs);
+            bytes_send_to_i2s += bytes_read_from_spiffs;
             xSemaphoreGive(audio_mux);
         }
         vTaskDelay(pdMS_TO_TICKS(100));
     } while (play_file_repeat);
-    
 
-    
+
+
 END:
+    esp_codec_dev_close(spk_codec_dev);
+
     if (file) {
         fclose(file);
     }
@@ -645,10 +650,10 @@ static void volume_event_cb(lv_event_t * e)
 
     assert(slider != NULL);
 
-    int32_t volume = lv_slider_get_value(slider);
     #if ENABLE_AUDIO
-    if (es8311_dev) {
-        es8311_voice_volume_set(es8311_dev, volume, NULL);
+    int32_t volume = lv_slider_get_value(slider);
+    if (spk_codec_dev) {
+        esp_codec_dev_set_out_vol(spk_codec_dev, volume);
     }
     #endif
 }
@@ -664,15 +669,6 @@ static void close_window_wav_handler(lv_event_t * e)
         
         xSemaphoreTake(audio_mux, portMAX_DELAY);
         vSemaphoreDelete(audio_mux);
-#if ENABLE_AUDIO
-        bsp_audio_poweramp_enable(false);
-        es8311_delete(es8311_dev);
-        es8311_dev = NULL;
-        if (i2s_tx_chan) {
-            i2s_channel_disable(i2s_tx_chan);
-            i2s_del_channel(i2s_tx_chan);
-        }
-#endif
     }
 }
 
@@ -686,17 +682,7 @@ static void show_window_wav(const char * path)
     strcpy(usb_drive_play_file, path);
 
     play_file_repeat = false;
- #if ENABLE_AUDIO   
-    const es8311_clock_config_t clk_cfg = BSP_ES8311_SCLK_CONFIG(SAMPLE_RATE);
-
-    /* Create and configure ES8311 I2C driver */
-    es8311_dev = es8311_create(BSP_I2C_NUM, ES8311_ADDRRES_0);
-    es8311_init(es8311_dev, &clk_cfg, ES8311_RESOLUTION_16, ES8311_RESOLUTION_16);
-    es8311_voice_volume_set(es8311_dev, DEFAULT_VOLUME, NULL);
-
-    bsp_audio_init(NULL, &i2s_tx_chan, NULL);
-    bsp_audio_poweramp_enable(true);
-
+ #if ENABLE_AUDIO       
     audio_mux = xSemaphoreCreateMutex();
     assert(audio_mux);
 
@@ -1017,6 +1003,7 @@ static void scroll_begin_event(lv_event_t * e)
     }
 }
 
+#if ENABLE_CAMERA_ZOOM
 static void slider_camera_zoom_event_cb(lv_event_t * e)
 {
     lv_obj_t * slider = lv_event_get_target(e);
@@ -1026,6 +1013,7 @@ static void slider_camera_zoom_event_cb(lv_event_t * e)
     camera_zoom = lv_slider_get_value(slider);
     lv_label_set_text_fmt(lbl_zoom, "Zoom (%3d%%): ", (int)(100+camera_zoom));
 }
+#endif
 
 static void slider_brightness_event_cb(lv_event_t * e)
 {
@@ -1054,7 +1042,7 @@ static void app_lvgl_show_settings(lv_obj_t * screen)
     lv_obj_set_flex_flow(screen, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(screen, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-#if 0
+#if ENABLE_CAMERA_ZOOM
     /* ZOOM */
     cont_row = lv_obj_create(screen);
     lv_obj_set_size(cont_row, VIDEO_LVGL_WIDTH-20, 80);
@@ -1199,8 +1187,6 @@ static EventBits_t wait_for_event(EventBits_t event, TickType_t timeout_ms)
 
 void app_main(void)
 {
-    bsp_i2c_init();
-
     ESP_ERROR_CHECK( initialize_usb_host_lib() );
 
     bsp_display_start();
@@ -1213,7 +1199,13 @@ void app_main(void)
 
     app_flags = xEventGroupCreate();
     assert(app_flags);
-
+ 
+    /* Initialize speaker */
+    spk_codec_dev = bsp_audio_codec_speaker_init();
+    assert(spk_codec_dev);
+    /* Speaker output volume */
+    esp_codec_dev_set_out_vol(spk_codec_dev, DEFAULT_VOLUME);
+    
     app_lvgl_show();
 
     ESP_LOGI(TAG, "Display LVGL animation");

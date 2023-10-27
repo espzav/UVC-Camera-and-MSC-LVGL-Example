@@ -21,7 +21,7 @@ On second tab, there is list of files and directories, when USB drive connected.
 
 ### Hardware Required
 
-* ESP-BOX
+* ESP-BOX / ESP-BOX-3
 * USB (UVC) Camera
 * USB Drive
 * USB cable with bare wires on one side
